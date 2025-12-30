@@ -66,7 +66,7 @@ class Problem:
 
     def baseline(self):
         cost = 0
-        full_path = [(0, 0)]
+        full_path = [(0, 0.0)]
         for dest, path in nx.single_source_dijkstra_path(
             self._graph, source=0, weight="weight"
         ).items():
@@ -117,9 +117,7 @@ class Problem:
             pos,
             with_labels=True,
             node_color=color,
-            node_size=size,
-            arrows=True,
-            arrowsize=300,
+            node_size=size
         )
 
 
