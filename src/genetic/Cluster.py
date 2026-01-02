@@ -91,7 +91,11 @@ class Cluster:
         return self._centroid # type: ignore
 
     @staticmethod
-    def find_best_cluster(P: ExtProblem, nodes: set[int], max_len_perm: int = 5, samples_per_node: int = 30):
+    def find_best_cluster(P: ExtProblem, nodes: set[int], max_len_perm: int = 5, samples_per_node: int = 30, max_samples: int = 50):
+        # assert len(nodes) > 0, "Cannot find best cluster for empty set of nodes"
+        if len(nodes) == 1:
+            return Cluster(list(nodes))
+
         timer = timeit.default_timer()
         best_cluster = None
         nodes_list = list(nodes)
@@ -142,8 +146,9 @@ class Cluster:
 
         else:
             nodes_list = find_greedy()
+            samples = min(max_samples, samples_per_node * len(nodes_list))
 
-            for a, b in np.random.randint(0, len(nodes_list), size=(samples_per_node * len(nodes_list), 2), dtype=np.int32):
+            for a, b in np.random.randint(0, len(nodes_list), size=(samples, 2), dtype=np.int32):
                 if a == b:
                     continue
                 # Try swapping a and b

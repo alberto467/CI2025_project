@@ -15,6 +15,7 @@ class ExtProblem(Problem):
     _shortest_paths_mat: list[list[list[int] | None]]
 
     times_dict: dict[str, float] = dict()
+    mutation_monitor: dict[str, dict[str, int | float]] = dict()
 
     def __init__(self, P: Problem):
         self._graph = P._graph  # .copy()

@@ -89,18 +89,22 @@ class ClusterState:
     def mutate_random(self, P: ExtProblem):
         r = np.random.rand()
 
-        if r < 0.4:
+        if r < 0.3:
             time = timeit.default_timer()
             self.mutate_random_move(P)
             P.times_dict["mutate_random_move"] = P.times_dict.get("mutate_random_move", 0.0) + (timeit.default_timer() - time)
-        elif r < 0.8:
+        elif r < 0.6:
             time = timeit.default_timer()
             self.mutate_merge_clusters(P)
             P.times_dict["mutate_merge_clusters"] = P.times_dict.get("mutate_merge_clusters", 0.0) + (timeit.default_timer() - time)
-        else:
+        elif r < 0.8:
             time = timeit.default_timer()
             self.mutate_split_cluster(P)
             P.times_dict["mutate_split_cluster"] = P.times_dict.get("mutate_split_cluster", 0.0) + (timeit.default_timer() - time)
+        else:
+            time = timeit.default_timer()
+            self.mutate_improve_cluster_order(P, samples=1)
+            P.times_dict["mutate_reorder_random_cluster"] = P.times_dict.get("mutate_reorder_random_cluster", 0.0) + (timeit.default_timer() - time)
 
         # if r < 0.35:
         #     self.mutate_merge_clusters(P)
@@ -165,6 +169,20 @@ class ClusterState:
             new_cl = Cluster.find_best_cluster(P, self.state[cidx].nodes_set(), max_len_perm=max_len_perm, samples_per_node=samples_per_node)
             if new_cl.get_gold_cost(P) < self.state[cidx].get_gold_cost(P):
                 self.state[cidx] = new_cl
+
+    def mutate_improve_cluster_order(self, P: ExtProblem, samples: int = 100):
+        for i, cl in enumerate(self.state):
+            nodes = cl.nodes
+            for a, b in np.random.randint(0, len(nodes), size=(samples, 2), dtype=np.int32):
+                if a == b:
+                    continue
+                new_nodes = nodes.copy()
+                # try swap
+                n = new_nodes.pop(a)
+                new_nodes.insert(b, n)
+                new_cl = Cluster(new_nodes)
+                if new_cl.get_gold_cost(P) < cl.get_gold_cost(P):
+                    self.state[i] = new_cl
 
     def plot(self, P: ExtProblem):
         import matplotlib.pyplot as plt

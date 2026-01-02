@@ -17,6 +17,12 @@ class GAGenerationLog:
     generation: int
     population: list[ClusterState]
 
+def build_rank_probs(p_first: float, size: int) -> np.ndarray:
+    """Builds a probability distribution over ranks, where the first rank has probability p_first,
+    and the rest decrease geometrically."""
+    probs = np.power((1-p_first), np.arange(size))
+    probs /= probs.sum()
+    return probs
 
 def genetic_algorithm(P: ExtProblem, population_size: int = 50, init_size: int = 10, keep_umerged_init: bool = True, radial_init_samples: int = 20, merge_samples: int = 50, generations: int = 100, log_every: int = 10, reorder_clusters_every: int = 0, reorder_samples_per_node: int = 30, p_first: float = 0.25, p_crossover: float = 0.7, debug = False, seed: int = 42):
     P.times_dict = {}
@@ -24,16 +30,14 @@ def genetic_algorithm(P: ExtProblem, population_size: int = 50, init_size: int =
     ELITISM_NUM = 2
     np.random.seed(seed)
 
-    # PARENTS_NUM = np.floor(population_size * 0.2).astype(int)
-    # N = P.graph.number_of_nodes() - 1  # excluding depot
-    # cls = cluster_solve(P, merge_clusters_method="sample", sample_loops=20, min_clusters=5)
-    # first_state = [[n] for n in range(1, P.graph.number_of_nodes())]
-
-    # baseline_sol = baseline_init_solution(P)
-    # merged_sol = merge_clusters(P, baseline_sol, method="sample", sample_loops=20)
-
     logging.debug(f"Generating initial population, {init_size} solutions with {radial_init_samples} radial samples")
-    baseline_sols = [radial_init_solution(P, num_samples=radial_init_samples) for _ in range(init_size)]
+    baseline_sols = [radial_init_solution(P, num_samples=radial_init_samples)]
+    while len(baseline_sols) < init_size:
+        min_clusters = np.array([0] + [len(cs.state) for cs in baseline_sols]).mean().astype(int)
+        max_clusters = np.array([len(cs.state) for cs in baseline_sols] + [P.graph.number_of_nodes()-1]).mean().astype(int)
+        samples = max(int(radial_init_samples * (max_clusters - min_clusters + 1) / (P.graph.number_of_nodes()-1)), 2)
+
+        baseline_sols.append(radial_init_solution(P, num_samples=samples, min_clusters=min_clusters, max_clusters=max_clusters))
     if merge_samples > 0:
         logging.debug(f"Merging initial solutions with {merge_samples} sample merges")
         merged_sols = [
@@ -58,9 +62,7 @@ def genetic_algorithm(P: ExtProblem, population_size: int = 50, init_size: int =
 
     generations_log: list[GAGenerationLog] | None = [] if debug else None
 
-    probs = np.power((1-p_first), np.arange(population_size))
-    probs /= probs.sum()
-    print(probs)
+    probs = build_rank_probs(p_first, population_size)
 
     for gen in range(generations):
         # t = (np.sin(gen / 30) + 1) / 2

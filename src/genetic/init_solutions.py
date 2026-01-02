@@ -11,7 +11,7 @@ from .ClusterState import ClusterState
 logger = logging.getLogger(__name__)
 
 
-def radial_init_solution(P: ExtProblem, num_samples: int = 25) -> ClusterState:
+def radial_init_solution(P: ExtProblem, num_samples: int = 25, min_clusters: int | None = None, max_clusters: int | None = None) -> ClusterState:
     pos = np.array([ pos for _, pos in P.graph.nodes(data='pos') ])
     pos = pos[1:] - pos[0]
     angles = np.arctan2(pos[:,1], pos[:,0]) + np.pi
@@ -51,10 +51,13 @@ def radial_init_solution(P: ExtProblem, num_samples: int = 25) -> ClusterState:
 
         return ClusterState(clusters)
 
+    min_clusters = min_clusters if min_clusters is not None else 1
+    max_clusters = max_clusters if max_clusters is not None else (P.graph.number_of_nodes()-1)
+
     # Let's do a binary search for the best number of clusters
     best_state = None
     best_cost = float("inf")
-    for candidate_num, offset in zip(np.linspace(1, P.graph.number_of_nodes() - 1, num_samples), np.random.uniform(0, 0.5, num_samples)):
+    for candidate_num, offset in zip(np.linspace(min_clusters, max_clusters, num_samples), np.random.uniform(0, 0.5, num_samples)):
         candidate_num = int(candidate_num)
         state = radial_split(candidate_num, offset)
         cost = state.cost(P)
