@@ -68,7 +68,7 @@ class Problem:
         cost = 0
         full_path = [(0, 0.0)]
         for dest, path in nx.single_source_dijkstra_path(
-            self._graph, source=0, weight="weight"
+            self._graph, source=0, weight="dist"
         ).items():
             if dest == 0:
                 continue
@@ -94,16 +94,6 @@ class Problem:
             "Baseline cost mismatch!"
         )
         return cost, full_path
-
-    def lower_bound(self):
-        lb = 0
-        for n in self._graph.nodes:
-            if n == 0:
-                continue
-            gold = self._graph.nodes[n]["gold"]
-            dist = nx.shortest_path_length(self._graph, n, 0, weight="dist")
-            lb += (self._alpha * dist * gold) ** self._beta
-        return lb
 
     def plot(self):
         plt.figure(figsize=(10, 10))

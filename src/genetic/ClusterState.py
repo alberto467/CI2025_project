@@ -34,6 +34,9 @@ class ClusterState:
 
     def cost(self, P: ExtProblem) -> float:
         return sum(cluster.get_gold_cost(P) for cluster in self.state)
+    
+    def get_centroids(self, P: ExtProblem) -> np.ndarray:
+        return np.array([cl.get_centroid(P) for cl in self.state])
 
     def mutate_random_swap(self, P: ExtProblem):
         if len(self.state) < 2:
@@ -71,7 +74,7 @@ class ClusterState:
             return
 
         time = timeit.default_timer()
-        centroids = np.array([cl.get_centroid(P) for cl in self.state])
+        centroids = self.get_centroids(P)
         P.times_dict["mutate_merge_clusters-compute_centroids"] = P.times_dict.get("mutate_merge_clusters-compute_centroids", 0.0) + (timeit.default_timer() - time)
 
         time = timeit.default_timer()
@@ -213,6 +216,15 @@ class ClusterState:
 
         plt.show()
 
+    def __hash__(self) -> int:
+        clusters_hashes = sorted(hash(cl) for cl in self.state)
+        return hash(tuple(clusters_hashes))
+    
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, ClusterState):
+            return False
+        return hash(self) == hash(value)
+
     def __copy__(self):
         c = ClusterState(copy(self.state))
         return c
@@ -253,9 +265,15 @@ def haussdorff_distance(P: ExtProblem, cs1: ClusterState, cs2: ClusterState) -> 
     Compute the Haussdorff distance as a measure of diversity
     between two ClusterStates (based on the cluster's centroids).
     """
-    cs1_centroids = np.array([cl.get_centroid(P) for cl in cs1.state])
-    cs2_centroids = np.array([cl.get_centroid(P) for cl in cs2.state])
+
+    cs1_centroids = cs1.get_centroids(P)
+    cs2_centroids = cs2.get_centroids(P)
     dist_matrix = np.linalg.norm(cs1_centroids[:, np.newaxis, :] - cs2_centroids[np.newaxis, :, :], axis=2)
-    min_dists = dist_matrix.min(axis=1)
+    min_dists = dist_matrix.min(axis=1) # 0 - sqrt(2)
+    # out = np.pow(np.mean((min_dists) ** 2), 1/2)
+    # out = out / out.max() * np.max(min_dists)
+    # out = 
+    # return out
+    
     max_dist = np.max(min_dists)
     return max_dist

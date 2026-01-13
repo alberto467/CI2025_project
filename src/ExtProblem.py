@@ -81,3 +81,14 @@ class ExtProblem(Problem):
 
         self._angles = angles
         return angles
+
+    def lower_bound(self):
+        """
+        Very basic lower bound, only considering the cost relative to transporting gold
+        (not very important for low alpha/beta values)
+        """
+
+        gold = self.gold_amounts[1:]
+        adj_dists = self.adj_floyd_mat[1:, 0]
+
+        return np.sum(adj_dists * np.power(self._alpha * gold, self._beta))

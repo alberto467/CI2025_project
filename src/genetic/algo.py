@@ -1,3 +1,4 @@
+import random
 import numpy as np
 from dataclasses import dataclass
 from copy import copy
@@ -6,7 +7,7 @@ import timeit
 
 from ..ExtProblem import ExtProblem
 from .init_solutions import merge_clusters, radial_init_solution
-from .ClusterState import ClusterState
+from .ClusterState import ClusterState, haussdorff_distance
 from .crossovers import radial_crossover
 
 logger = logging.getLogger(__name__)
@@ -52,10 +53,18 @@ def genetic_algorithm(P: ExtProblem, population_size: int = 50, init_size: int =
     baseline_sols_costs = np.array([sol.cost(P) for sol in baseline_sols])
     logging.info(f"Generated initial solutions with costs: {baseline_sols_costs.min():.3f} - {baseline_sols_costs.max():.3f} (avg: {baseline_sols_costs.mean():.3f})")
 
-    population = copy(baseline_sols)
-    while len(population) < population_size:
-        population += [copy(cls) for cls in baseline_sols]
-    population = population[:population_size]
+    population: list[ClusterState] = copy(baseline_sols)
+
+    def rank_pop(pop: list[ClusterState]):
+        ranked_pop = list(pop)
+        # pop_cost = np.array([cs.cost(P) for cs in ranked_pop])
+        pop_cost = np.zeros(len(ranked_pop), dtype=np.float32)
+        for i, cs in enumerate(ranked_pop):
+            cost = cs.cost(P)
+            pop_cost[i] = cost
+        sort_idx = np.argsort(pop_cost)
+        ranked_pop: list[ClusterState] = [ranked_pop[i] for i in sort_idx]
+        return ranked_pop, pop_cost[sort_idx]
 
     best_cost = float("inf")
     best_generation = -1
@@ -68,35 +77,15 @@ def genetic_algorithm(P: ExtProblem, population_size: int = 50, init_size: int =
         # t = (np.sin(gen / 30) + 1) / 2
 
         time = timeit.default_timer()
-        pop_cost = np.array([cs.cost(P) for cs in population])
-        sorted_indices = np.argsort(pop_cost)
-        population: list[ClusterState] = [population[i] for i in sorted_indices]
-        pop_cost = pop_cost[sorted_indices]
+        population, pop_cost = rank_pop(population)
         P.times_dict['cost'] = P.times_dict.get('cost', 0.0) + timeit.default_timer() - time
 
         if pop_cost[0] < best_cost:
             best_cost = pop_cost[0]
             best_generation = gen
 
-        next_population: list[ClusterState] = [ copy(cs) for cs in population[:ELITISM_NUM]]
-
-        # # Map pop-cost into 0-1 range
-        # pop_cost = pop_cost / (pop_cost[0] + 1e-6) - 1
-        # pop_cost /= (pop_cost[-1] + 1e-6)
-        # pop_cost = 1.0 - pop_cost  # Invert so that lower cost = higher value
-
-        # probs = np.power(pop_cost, 0.7)
-        # probs /= probs.sum()
-
-        # def measure_diversity(cs: ClusterState) -> float:
-        #     """Returns a diversity measure from 0.0 to 1.0"""
-        #     diversity = 0.0
-        #     samples = min(len(next_population), 20)
-        #     for other_cs in next_population[-20:]: # type: ignore
-        #         # diversity += 1.0 - rand_index(cs, other_cs)
-        #         diversity += haussdorff_distance(P, cs, other_cs)
-
-        #     return diversity / samples
+        # next_population: list[ClusterState] = population[:ELITISM_NUM]
+        next_population: list[ClusterState] = []
 
         while len(next_population) < population_size:
             # pop_diversity = np.array([measure_diversity(cs) for cs in population])
@@ -113,7 +102,7 @@ def genetic_algorithm(P: ExtProblem, population_size: int = 50, init_size: int =
                 p1, p2 = np.random.choice(
                     population, #type: ignore
                     size=2,
-                    p=probs,
+                    p=probs[:len(population)]/np.sum(probs[:len(population)]),
                     replace=False,
                 )
                 time = timeit.default_timer()
@@ -124,17 +113,36 @@ def genetic_algorithm(P: ExtProblem, population_size: int = 50, init_size: int =
                 child = np.random.choice(
                     population, #type: ignore
                     size=1,
-                    p=probs,
+                    p=probs[:len(population)]/np.sum(probs[:len(population)]),
                 )[0]
                 child = copy(child)
 
             time = timeit.default_timer()
-            # if random.getrandbits(1) == 1:
             child.mutate_random(P)
+            # mut_child = copy(child)
+            # mut_child.mutate_random(P)
+            # for _ in range(1):  # Number of mutations
+            #     mut = copy(child)
+            #     mut.mutate_random(P)
+            #     if mut.cost(P) < mut_child.cost(P):
+            #         mut_child = mut
             P.times_dict['mutation'] = P.times_dict.get('mutation', 0.0) + timeit.default_timer() - time
             next_population.append(child)
 
-        population = next_population
+        next_population = list(set(next_population).union(set(population)))
+        next_population, _ = rank_pop(next_population)
+        probs = build_rank_probs(0.3, len(next_population))
+        # population = population[:ELITISM_NUM] + np.random.choice(
+        #     next_population, #type: ignore
+        #     size=(population_size-ELITISM_NUM),
+        #     p=probs,
+        #     replace=False,
+        # ).tolist()
+        # survivors = []
+        # while len(survivors) < population_size:
+
+        population = next_population[:population_size]
+            
 
         if reorder_clusters_every > 0 and gen % reorder_clusters_every == 0:
             time = timeit.default_timer()
@@ -149,10 +157,11 @@ def genetic_algorithm(P: ExtProblem, population_size: int = 50, init_size: int =
                 f"Generation {gen}: best cost = {best_cost:.3f} at gen {best_generation}"
             )
 
-    pop_cost = np.array([cs.cost(P) for cs in population])
+    ranked_pop = list(population)
+    pop_cost = np.array([cs.cost(P) for cs in ranked_pop])
     sort_idx = np.argsort(pop_cost)
-    population = [population[i] for i in sort_idx]
+    ranked_pop = [ranked_pop[i] for i in sort_idx]
     pop_cost = pop_cost[sort_idx]
 
     
-    return population, pop_cost, generations_log
+    return ranked_pop, pop_cost, generations_log
