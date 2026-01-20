@@ -11,7 +11,13 @@ from .ClusterState import ClusterState
 logger = logging.getLogger(__name__)
 
 
-def radial_crossover(P: ExtProblem, p1: ClusterState, p2: ClusterState, outside_samples: int = 25, reorder_samples_per_node: int = 30) -> ClusterState:
+def radial_crossover(
+    P: ExtProblem,
+    p1: ClusterState,
+    p2: ClusterState,
+    outside_samples: int = 20,
+    reorder_samples_per_node: int = 30,
+) -> ClusterState:
     # Split nodes into two groups based on their angle, using a random split angle
     angles = P.angles()
     split_angle = np.random.uniform(0, 2 * np.pi)

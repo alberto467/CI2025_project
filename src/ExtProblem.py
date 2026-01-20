@@ -2,7 +2,7 @@ import networkx as nx
 import numpy as np
 import logging
 
-from .problem import Problem
+from Problem import Problem
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,40 @@ class ExtProblem(Problem):
 
         self._angles = angles
         return angles
+
+    def gold_path_cost(self, path: list[tuple[int, float]]) -> float:
+        total = 0
+        gold_carried = 0.0
+        for (u, gold_prev), (v, _) in zip(path[:-1], path[1:]):
+            if u == 0:
+                gold_carried = 0.0
+            else:
+                gold_carried += gold_prev
+
+            dist = self.floyd_mat[u, v]
+            total += dist + (dist * self._alpha * gold_carried) ** self._beta
+
+        return total
+
+    def verify_gold_path(self, path: list[tuple[int, float]]) -> bool:
+        tol = 1e-3
+
+        gold_left = self.gold_amounts.copy()
+        for node, gold_taken in path:
+            if gold_taken < 0:
+                logger.error(f"Negative gold taken at node {node}: {gold_taken}")
+                return False
+            if 0 < gold_taken < 1:
+                logger.error(f"Fractional gold taken at node {node}: {gold_taken}")
+                return False
+            if gold_taken > gold_left[node] + tol:
+                logger.error(
+                    f"Too much gold taken at node {node}: taken {gold_taken}, available {gold_left[node]}"
+                )
+                return False
+            gold_left[node] -= gold_taken
+
+        assert np.all(np.abs(gold_left) < tol), "Not all gold has been collected!"
 
     def lower_bound(self):
         """

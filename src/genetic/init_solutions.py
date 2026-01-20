@@ -78,7 +78,13 @@ def baseline_init_solution(P: ExtProblem) -> ClusterState:
     return ClusterState(clusters)
 
 
-def merge_clusters(P: ExtProblem, cluster_state: ClusterState, method: Literal["perm", "sample"] = "perm", sample_loops = 10, min_clusters = 1):
+def merge_clusters(
+    P: ExtProblem,
+    cluster_state: ClusterState,
+    method: Literal["perm", "sample"] = "perm",
+    samples=10,
+    min_clusters=1,
+):
     """
     From an initial cluster state tries to merge clusters to reduce the overall cost.
 
@@ -106,11 +112,18 @@ def merge_clusters(P: ExtProblem, cluster_state: ClusterState, method: Literal["
                     best_merged = merged
 
         if method == 'sample':
-            pairs = np.arange(len(clusters))
-            for _ in range(sample_loops):
-                np.random.shuffle(pairs)
-                for i in range(0, pairs.shape[0] - (pairs.shape[0] % 2), 2):
-                    try_merge(pairs[i], pairs[i+1])
+            if samples < len(clusters) // 2:
+                sample_loops = max(1, samples // (len(clusters) // 2))
+                pairs = np.arange(len(clusters))
+                for _ in range(sample_loops):
+                    np.random.shuffle(pairs)
+                    for i in range(0, pairs.shape[0] - (pairs.shape[0] % 2), 2):
+                        try_merge(pairs[i], pairs[i + 1])
+            else:
+                for i, j in np.random.randint(0, len(clusters), size=(samples, 2)):
+                    if i == j:
+                        continue
+                    try_merge(i, j)
 
         elif method == 'perm':
             for i, j in permutations(range(len(clusters)), 2):

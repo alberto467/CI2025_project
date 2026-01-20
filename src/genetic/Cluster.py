@@ -96,7 +96,7 @@ class Cluster:
         if len(nodes) == 1:
             return Cluster(list(nodes))
 
-        timer = timeit.default_timer()
+        # timer = timeit.default_timer()
         best_cluster = None
         nodes_list = list(nodes)
 
@@ -162,8 +162,7 @@ class Cluster:
                     nodes_list[a], nodes_list[b] = nodes_list[b], nodes_list[a]
 
         assert best_cluster is not None
-        time = timeit.default_timer() - timer
-        P.times_dict["find_best_cluster"] = P.times_dict.get("find_best_cluster", 0.0) + time
+
         return best_cluster
 
     def insert_node_at_best_position(self, P: ExtProblem, node: int):

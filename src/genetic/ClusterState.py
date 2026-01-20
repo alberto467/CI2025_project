@@ -73,18 +73,18 @@ class ClusterState:
         if len(self.state) < 2:
             return
 
-        time = timeit.default_timer()
+        # time = timeit.default_timer()
         centroids = self.get_centroids(P)
-        P.times_dict["mutate_merge_clusters-compute_centroids"] = P.times_dict.get("mutate_merge_clusters-compute_centroids", 0.0) + (timeit.default_timer() - time)
+        # P.times_dict["mutate_merge_clusters-compute_centroids"] = P.times_dict.get("mutate_merge_clusters-compute_centroids", 0.0) + (timeit.default_timer() - time)
 
-        time = timeit.default_timer()
+        # time = timeit.default_timer()
         i1 = np.random.randint(0, len(self.state))
         dists = np.linalg.norm(centroids - centroids[i1], axis=1)
         dists[i1] = float("inf")
         # probs = softmax(-dists, temp=0.3)
         # i2 = np.random.choice(range(len(self.state)), p=probs)
         i2 = int(np.argmin(dists))
-        P.times_dict["mutate_merge_clusters-find_pair"] = P.times_dict.get("mutate_merge_clusters-find_pair", 0.0) + (timeit.default_timer() - time)
+        # P.times_dict["mutate_merge_clusters-find_pair"] = P.times_dict.get("mutate_merge_clusters-find_pair", 0.0) + (timeit.default_timer() - time)
 
         self.state[i1] = self.state[i1].merge(P, self.state[i2])
         self.state.pop(i2)
@@ -93,21 +93,21 @@ class ClusterState:
         r = np.random.rand()
 
         if r < 0.3:
-            time = timeit.default_timer()
+            # time = timeit.default_timer()
             self.mutate_random_move(P)
-            P.times_dict["mutate_random_move"] = P.times_dict.get("mutate_random_move", 0.0) + (timeit.default_timer() - time)
+            # P.times_dict["mutate_random_move"] = P.times_dict.get("mutate_random_move", 0.0) + (timeit.default_timer() - time)
         elif r < 0.6:
-            time = timeit.default_timer()
+            # time = timeit.default_timer()
             self.mutate_merge_clusters(P)
-            P.times_dict["mutate_merge_clusters"] = P.times_dict.get("mutate_merge_clusters", 0.0) + (timeit.default_timer() - time)
+            # P.times_dict["mutate_merge_clusters"] = P.times_dict.get("mutate_merge_clusters", 0.0) + (timeit.default_timer() - time)
         elif r < 0.8:
-            time = timeit.default_timer()
+            # time = timeit.default_timer()
             self.mutate_split_cluster(P)
-            P.times_dict["mutate_split_cluster"] = P.times_dict.get("mutate_split_cluster", 0.0) + (timeit.default_timer() - time)
+            # P.times_dict["mutate_split_cluster"] = P.times_dict.get("mutate_split_cluster", 0.0) + (timeit.default_timer() - time)
         else:
-            time = timeit.default_timer()
+            # time = timeit.default_timer()
             self.mutate_improve_cluster_order(P, samples=1)
-            P.times_dict["mutate_reorder_random_cluster"] = P.times_dict.get("mutate_reorder_random_cluster", 0.0) + (timeit.default_timer() - time)
+            # P.times_dict["mutate_reorder_random_cluster"] = P.times_dict.get("mutate_reorder_random_cluster", 0.0) + (timeit.default_timer() - time)
 
         # if r < 0.35:
         #     self.mutate_merge_clusters(P)
@@ -122,7 +122,7 @@ class ClusterState:
 
         # self.verify(P)
 
-    def mutate_split_cluster(self, P: ExtProblem, split_tries: int = 50):
+    def mutate_split_cluster(self, P: ExtProblem, split_tries: int = 40):
         # Randomly select a cluster based on its cost
         candidates = [idx for idx in range(len(self.state)) if len(self.state[idx].nodes) >= 2]
         if not candidates:
@@ -215,6 +215,13 @@ class ClusterState:
         # plt.legend()
 
         plt.show()
+
+    def get_gold_path(self, P: ExtProblem) -> list[tuple[int, float]]:
+        full_path: list[tuple[int, float]] = [(0, 0.0)]
+        for cluster in self.state:
+            cluster_path = cluster.get_gold_path(P)
+            full_path += cluster_path[1:]
+        return full_path
 
     def __hash__(self) -> int:
         clusters_hashes = sorted(hash(cl) for cl in self.state)
