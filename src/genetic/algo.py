@@ -1,4 +1,5 @@
 import random
+from re import L
 import numpy as np
 from dataclasses import dataclass
 from copy import copy
@@ -207,7 +208,7 @@ def trips_expansion(P: ExtProblem, state: ClusterState):
 
     full_refined_path = [(0, 0.0)]
 
-    for cl in state.state:
+    for cl_i, cl in enumerate(state.state):
         path = cl.get_gold_path(P)
         cost = cl.get_gold_cost(P)
 
@@ -216,7 +217,7 @@ def trips_expansion(P: ExtProblem, state: ClusterState):
         best_cost = cost
         best_path_n = 1
 
-        step = 8
+        step = 2
         n_trips = step
         while True:
             # Split the cluster into n repeated trips
@@ -244,10 +245,9 @@ def trips_expansion(P: ExtProblem, state: ClusterState):
                 if n_trips == best_path_n:
                     break
 
-        # if best_path_n > 1:
-        #     print(
-        #         f"Refined cluster {cl.nodes} from cost {cost:.3f} to {best_cost:.3f} by splitting into {best_path_n} parts"
-        #     )
+        logger.info(
+            f"Cluster {cl_i}/{len(state.state)} path processed and refined from cost {cost:.3f} to {best_cost:.3f} by splitting into {best_path_n} parts"
+        )
 
         # Append to full path
         full_refined_path += best_path[1:]  # Skip depot for all but first

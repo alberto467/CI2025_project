@@ -56,6 +56,8 @@ class ExtProblem(Problem):
 
     def cached_shortest_path(self, u: int, v: int) -> list[int]:
         assert u != v, "Shortest path requested between the same node"
+        if self._graph.has_edge(u, v):
+            return [u, v]
         flipped = u > v
         if flipped:
             u, v = v, u

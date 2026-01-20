@@ -48,6 +48,7 @@ params_faster = {
     # Init params
     "init_size": 4,
     "radial_init_samples": 10,
+    "p_crossover": 0.2,
 }
 
 params_base = {
@@ -63,18 +64,17 @@ def solution(P: Problem):
     N = P_ext.graph.number_of_nodes()
     if N <= 50:
         # params = params_slow
-        params = params_fast
+        params = {**params_base, **params_fast}
     elif N <= 200:
-        params = params_medium
+        params = {**params_base, **params_medium}
     elif N <= 600:
-        params = params_fast
+        params = {**params_base, **params_fast}
     else:
-        params = params_faster
+        params = {**params_base, **params_faster}
 
     best, cost, _ = genetic_algorithm(
         P_ext,
         **params,
-        **params_base,
         merge_init_samples=100 if N <= 100 else 0,
     )
 
@@ -84,6 +84,6 @@ def solution(P: Problem):
     logger.info(f"Best solution found has cost {cost:.2f}")
     return refined_solution
 
-P = Problem(num_cities=1000, density=0.8, alpha=0.1, beta=2)
-sol = solution(P)
-print(sol)
+# P = Problem(num_cities=1000, density=0.8, alpha=0.1, beta=2)
+# sol = solution(P)
+# print(sol)
